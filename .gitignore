@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Data: this project has no dataset. Workloads are generated from seeds; never commit
+# generated workload files. The generator script is committed instead.
+data/synthetic/*.csv
+data/synthetic/*.npz
+!data/synthetic/samples/
+
+# Experiment outputs: only the reference run behind the [Reproduced] numbers is committed.
+experiments/results/runs/
+notebooks/_executed/
+*.pt
+*.ckpt
+
+# Secrets
+.env
+*.pem
+*.key

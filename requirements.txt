@@ -1,0 +1,20 @@
+# Full draft environment (CPU, laptop scale): core + notebooks + dev tools.
+# Equivalent to:  pip install -e ".[all]"
+# The exact versions this draft was tested with are pinned in requirements-lock.txt.
+
+# --- core: scheduler simulator, baselines, Double DQN, result tables ---
+numpy>=1.26
+pyyaml>=6.0
+matplotlib>=3.8
+gymnasium>=1.0
+torch>=2.2
+
+# --- notebooks ---
+nbformat>=5.9
+nbclient>=0.10
+ipykernel>=6.29
+
+# --- development ---
+pytest>=8.0
+ruff>=0.6
+black>=24.0

@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ddqn-os-scheduling"
+version = "0.1.0.dev0"
+description = "Draft reference implementation: a discrete-event operating-system scheduling simulator with textbook baselines, a Double DQN agent and guardrails."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Fan Guo" }]
+urls = { Homepage = "https://github.com/fguo10-tech/ddqn-os-scheduling", Repository = "https://github.com/fguo10-tech/ddqn-os-scheduling" }
+keywords = [
+    "reinforcement-learning",
+    "double-dqn",
+    "scheduling",
+    "operating-systems",
+    "simulation",
+    "reproducibility",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core install: the simulator, the baselines, the Double DQN agent and the result tables.
+dependencies = [
+    "numpy>=1.26",
+    "pyyaml>=6.0",
+    "matplotlib>=3.8",
+    "gymnasium>=1.0",
+    "torch>=2.2",
+]
+
+[project.optional-dependencies]
+# Optional: execute the notebooks.
+notebooks = [
+    "nbformat>=5.9",
+    "nbclient>=0.10",
+    "ipykernel>=6.29",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "black>=24.0",
+]
+all = ["ddqn-os-scheduling[notebooks,dev]"]
+
+[tool.setuptools.packages.find]
+# The import package is called ``src``, following the folder layout. Install in editable mode
+# from a checkout, and use one virtual environment per project: another project that also
+# installs a package called ``src`` would collide with this one.
+include = ["src", "src.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: longer smoke runs (still CPU, still well under a minute each)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["notebooks", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "experiments"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+extend-exclude = "notebooks|\\.venv"
