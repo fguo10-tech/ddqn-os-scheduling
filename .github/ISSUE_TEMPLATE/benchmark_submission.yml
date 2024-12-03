@@ -1,0 +1,147 @@
+name: Benchmark submission
+description: Submit results for a new scheduling method run on the standard benchmark protocol.
+title: "[Benchmark] "
+labels: ["benchmark"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to add a method to the scheduling benchmark, for example a new heuristic
+        or learned scheduler from an HPC or cluster scheduling researcher, a reward or
+        exploration variant from a reinforcement-learning researcher, or a new guardrail from a
+        systems reliability researcher.
+
+        Submitted numbers are listed as external submissions. They become [Reproduced] in the
+        docs only after a maintainer re-runs them from your config.
+  - type: dropdown
+    id: method_kind
+    attributes:
+      label: Kind of method
+      options:
+        - "Textbook or heuristic scheduler (runs without guardrails, like the existing baselines)"
+        - "Learned scheduler (trained per seed, like the Double DQN agent)"
+        - "Variant of the Double DQN agent (reward, network, exploration or hyperparameters)"
+        - "Guardrail or fallback rule"
+    validations:
+      required: true
+  - type: input
+    id: method
+    attributes:
+      label: Method name
+    validations:
+      required: true
+  - type: textarea
+    id: method_description
+    attributes:
+      label: Method description
+      description: What the method does, a reference if it is published, and a link to your branch or pull request.
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: The commit the results were produced from.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: seeds
+    attributes:
+      label: Seeds
+      description: Reporting seeds, for example 0 1 2 3 4.
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: Results summary
+      description: Each metric (turnaround, throughput, response time, waiting time, SLO violation rate, starvation count) per load profile and pooled, as mean ± sample std across seeds, next to the baselines run under the same config, workloads and seeds.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "### Workload and information"
+  - type: dropdown
+    id: workload_source
+    attributes:
+      label: Workload source
+      options:
+        - Built-in synthetic generator, unchanged
+        - Built-in synthetic generator, modified (describe below)
+        - Public trace (name and version below)
+    validations:
+      required: true
+  - type: textarea
+    id: workload_details
+    attributes:
+      label: Workload trace or generator details
+      description: Trace name, version, download location and checksum, or the generator settings you changed.
+  - type: dropdown
+    id: burst_information
+    attributes:
+      label: Burst-length information the method uses
+      description: The existing baselines and the agent read the exact remaining time of the current CPU burst (an oracle). Say what your method reads, so that the comparison stays fair.
+      options:
+        - Exact current-burst length, like the existing methods
+        - Estimated burst length (describe the estimator below)
+        - Exact total remaining work over future bursts (the oracle ablation)
+        - No burst-length information
+    validations:
+      required: true
+  - type: dropdown
+    id: preemption
+    attributes:
+      label: Preemption
+      description: Textbook SJF is non-preemptive; SRTF and the agent can preempt. Compare a preemptive method with SRTF as well as with the Before baselines.
+      options:
+        - Non-preemptive
+        - Preemptive (time slices or preemption on arrival)
+    validations:
+      required: true
+  - type: textarea
+    id: information_details
+    attributes:
+      label: Estimator, guardrail or preemption details
+      description: How burst lengths are estimated, which guardrails are on, and the time slices used, if any.
+  - type: markdown
+    attributes:
+      value: "### Protocol"
+  - type: checkboxes
+    id: protocol
+    attributes:
+      label: Protocol confirmations
+      options:
+        - label: Results cover at least 5 seeds, reported as mean ± sample standard deviation across seeds.
+          required: true
+        - label: The raw per-seed CSVs and the summary CSV are attached.
+          required: true
+        - label: "`config_used.yaml` and `metadata.json` from every run directory are attached."
+          required: true
+        - label: Nothing was tuned on the reporting seeds 0–4 or on test data; tuning used seeds 100 and above.
+          required: true
+        - label: Baselines and the SRTF reference were run under the same config, workloads and seeds, and were not modified.
+          required: true
+        - label: Every number I quote carries a source label ([Paper-reported], [Reproduced] or [Target / TBD]).
+          required: true
+        - label: No real personal, medical or financial data is attached; any trace used is public and named above.
+          required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware, wall-clock time and package versions
+    validations:
+      required: true
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Attachments
+      description: Drag in the CSVs, `config_used.yaml` and `metadata.json`, or link to them.
+    validations:
+      required: true
