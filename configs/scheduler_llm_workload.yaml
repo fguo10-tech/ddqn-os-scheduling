@@ -1,0 +1,103 @@
+# LLM-style workload profile for the scheduling benchmark.
+#
+# What it is: a synthetic task mix shaped like the work an LLM platform puts on one shared
+# accelerator node — many short, latency-sensitive inference requests next to a few long,
+# memory-heavy fine-tuning jobs. The single processor and the memory budget of the simulator
+# stand in for that node.
+# What it is not: no language model is run anywhere in this repository, and no value below was
+# measured on an LLM system or fitted to a trace. Every value is [Assumption — not in paper],
+# chosen by hand to give the mix its shape.
+#
+# Time is in the simulator milliseconds of configs/scheduler_ddqn.yaml. The profile keeps the
+# ratio between a request and a job (about 1 : 20 at the median), not the absolute durations of
+# a production system, where a fine-tuning job runs for minutes to hours.
+#
+# Everything that is not listed here — machine model, load profiles, observation, actions,
+# reward, guardrails, agent hyperparameters, training and evaluation protocol, seeds, ablations
+# and smoke settings — is inherited unchanged from the base config, so the two studies differ
+# only in the shape of the workload. The agent is trained from scratch on this profile; no
+# hyperparameter was retuned for it.
+#
+# The `ablations:` section at the end of this file adds one single-setting variant to the ones
+# inherited from the base config. It is post hoc: it was added after the reference results of
+# this profile had been seen, to check one explanation of them, and it is reported separately
+# from the Before / After tables (run it with `--ablation starvation_bounded_slice`).
+#
+# Run it with:
+#   python -m experiments.run_scheduler_benchmark --config configs/scheduler_llm_workload.yaml \
+#       --baselines-config configs/scheduler_baselines.yaml --class-metrics --out <folder>
+
+# Config this profile inherits from (path relative to this file). [Assumption — not in paper]
+base_config: scheduler_ddqn.yaml
+# Keys whose value in the base config is dropped before merging, so the two task classes below replace the three classes of the base config instead of being added to them (list of dotted keys). [Assumption — not in paper]
+replace_keys: [workload.task_types]
+
+# Synthetic workload generator (section): only the task classes and their priorities change.
+workload:
+  # Sampling weights of priority levels 0 (lowest) .. 3 (highest), one list per task class (unitless): the platform marks interactive requests as more urgent than batch jobs.
+  priority_level_weights:
+    # Inference requests are interactive: levels 2 and 3 only (unitless). [Assumption — not in paper]
+    inference_request: [0.0, 0.0, 0.5, 0.5]
+    # Fine-tuning jobs are batch work: levels 0 and 1 only (unitless). [Assumption — not in paper]
+    finetune_job: [0.5, 0.5, 0.0, 0.0]
+  # Per task class (every number is an assumption).
+  task_types:
+    # Inference request: one short generation burst, sometimes two with a wait in between (a retrieval or tool call), a small per-request memory footprint and a tight deadline.
+    inference_request:
+      # Mixture weight of this class (unitless, normalised over classes): most tasks are requests. [Assumption — not in paper]
+      weight: 0.85
+      # Median of the lognormal total compute demand (ms). [Assumption — not in paper]
+      cpu_median_ms: 12.0
+      # Sigma of the lognormal compute demand (log-space, unitless): output lengths are skewed. [Assumption — not in paper]
+      cpu_sigma: 0.7
+      # Lower clip of the compute demand (ms). [Assumption — not in paper]
+      cpu_min_ms: 2.0
+      # Upper clip of the compute demand (ms). [Assumption — not in paper]
+      cpu_max_ms: 80.0
+      # Minimum number of waits inside a request (count; bursts = waits + 1). [Assumption — not in paper]
+      io_ops_min: 0
+      # Maximum number of waits inside a request (count): at most one retrieval or tool call. [Assumption — not in paper]
+      io_ops_max: 1
+      # Shortest such wait (ms). [Assumption — not in paper]
+      io_wait_min_ms: 5.0
+      # Longest such wait (ms). [Assumption — not in paper]
+      io_wait_max_ms: 30.0
+      # Smallest per-request memory footprint (MB): request state, not the model weights. [Assumption — not in paper]
+      memory_min_mb: 64.0
+      # Largest per-request memory footprint (MB). [Assumption — not in paper]
+      memory_max_mb: 512.0
+      # Deadline budget as a multiple of the request's own compute + wait time (unitless): tight, a latency target. [Assumption — not in paper]
+      slo_factor: 2.0
+    # Fine-tuning job: long compute segments separated by data-loading or checkpoint waits, a memory footprint that fills most of the node, and a loose deadline.
+    finetune_job:
+      # Mixture weight of this class (unitless): few tasks, most of the compute. [Assumption — not in paper]
+      weight: 0.15
+      # Median of the lognormal total compute demand (ms): about twenty times a request. [Assumption — not in paper]
+      cpu_median_ms: 250.0
+      # Sigma of the lognormal compute demand (log-space, unitless). [Assumption — not in paper]
+      cpu_sigma: 0.5
+      # Lower clip of the compute demand (ms). [Assumption — not in paper]
+      cpu_min_ms: 80.0
+      # Upper clip of the compute demand (ms). [Assumption — not in paper]
+      cpu_max_ms: 800.0
+      # Minimum number of data-loading / checkpoint waits (count; compute segments = waits + 1). [Assumption — not in paper]
+      io_ops_min: 1
+      # Maximum number of data-loading / checkpoint waits (count). [Assumption — not in paper]
+      io_ops_max: 4
+      # Shortest such wait (ms). [Assumption — not in paper]
+      io_wait_min_ms: 10.0
+      # Longest such wait (ms). [Assumption — not in paper]
+      io_wait_max_ms: 60.0
+      # Smallest memory footprint (MB): 1.5 GB of the 4 GB node (machine.memory_capacity_mb). [Assumption — not in paper]
+      memory_min_mb: 1536.0
+      # Largest memory footprint (MB): 3 GB, so two jobs held in memory at once can exceed the node and slow everything down. [Assumption — not in paper]
+      memory_max_mb: 3072.0
+      # Deadline budget as a multiple of the job's own compute + wait time (unitless): loose, a batch target. [Assumption — not in paper]
+      slo_factor: 6.0
+
+# Named ablations of this profile, added to the ones inherited from the base config: name -> {dotted.key: value}. Run with --ablation NAME into <out>/ablations/NAME/.
+ablations:
+  # Post hoc variant (added after the reference results of this profile had been seen; not part of the study as fixed in advance): the starvation override hands the processor to the longest-waiting task for one bounded slice instead of until the end of its burst. It checks whether the length of that forced dispatch is what makes the override rules cost turnaround on this profile. One value, fixed before the variant was run; no other value was tried.
+  starvation_bounded_slice:
+    # Slice of the forced dispatch (ms): one Round Robin quantum, the value of round_robin.quantum_ms in configs/scheduler_baselines.yaml and of guardrails.slo_fallback.fallback_quantum_ms. [Assumption — not in paper]
+    guardrails.starvation.forced_time_slice_ms: 20.0
