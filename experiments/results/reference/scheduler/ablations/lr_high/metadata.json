@@ -1,0 +1,88 @@
+{
+  "command": "python -m experiments.run_scheduler_benchmark --config configs/scheduler_ddqn.yaml --baselines-config configs/scheduler_baselines.yaml --out experiments/results/reference/scheduler --workers 5 --no-checkpoints --ablation lr_high",
+  "config_hash": "bfadf2416a04",
+  "created_utc": "2024-11-20T04:56:45Z",
+  "environment": {
+    "git_commit": "unknown",
+    "machine": "arm64",
+    "packages": {
+      "flwr": "1.44.0",
+      "gymnasium": "1.4.0",
+      "matplotlib": "3.11.2",
+      "numpy": "2.5.5",
+      "opacus": "1.6.0",
+      "pandas": "3.1.1",
+      "pyyaml": "6.0.3",
+      "scikit-learn": "1.9.1",
+      "torch": "2.15.0"
+    },
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.12.14"
+  },
+  "extra": {
+    "ablation": "lr_high",
+    "per_seed": [
+      {
+        "agent_eval_seconds": 2.3581404592841864,
+        "baseline_eval_seconds": 1.2426905427128077,
+        "diverged": false,
+        "divergence_reason": null,
+        "seed": 0,
+        "seed_seconds": 47.39910033438355,
+        "training_env_steps": 92551,
+        "training_seconds": 43.79815283231437
+      },
+      {
+        "agent_eval_seconds": 2.0767203755676746,
+        "baseline_eval_seconds": 1.2184677086770535,
+        "diverged": false,
+        "divergence_reason": null,
+        "seed": 1,
+        "seed_seconds": 46.655179833993316,
+        "training_env_steps": 93371,
+        "training_seconds": 43.359892416745424
+      },
+      {
+        "agent_eval_seconds": 2.3836376257240772,
+        "baseline_eval_seconds": 1.260611541569233,
+        "diverged": false,
+        "divergence_reason": null,
+        "seed": 2,
+        "seed_seconds": 46.87717045750469,
+        "training_env_steps": 90610,
+        "training_seconds": 43.23280724976212
+      },
+      {
+        "agent_eval_seconds": 1.8286683754995465,
+        "baseline_eval_seconds": 1.3202056242153049,
+        "diverged": false,
+        "divergence_reason": null,
+        "seed": 3,
+        "seed_seconds": 46.76611974928528,
+        "training_env_steps": 92203,
+        "training_seconds": 43.61711741704494
+      },
+      {
+        "agent_eval_seconds": 2.0303241666406393,
+        "baseline_eval_seconds": 1.2052761651575565,
+        "diverged": false,
+        "divergence_reason": null,
+        "seed": 4,
+        "seed_seconds": 47.2669204575941,
+        "training_env_steps": 94327,
+        "training_seconds": 44.03121120855212
+      }
+    ],
+    "smoke": false,
+    "wall_clock_seconds": 49.1,
+    "wall_seconds": 48.05064441636205,
+    "workers": 5
+  },
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ]
+}

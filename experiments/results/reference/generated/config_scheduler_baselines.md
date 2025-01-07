@@ -1,0 +1,37 @@
+`configs/scheduler_baselines.yaml` (verbatim; comments carry the provenance tag of every key):
+
+```yaml
+# Textbook baseline schedulers evaluated next to the Double DQN agent.
+#
+# FCFS, SJF and Round Robin are textbook baselines; Priority scheduling is added by this
+# repository. The simulator, workload and metrics come from configs/scheduler_ddqn.yaml so that
+# every method runs on identical workloads.
+
+# Baselines to evaluate, in this order (any of fcfs, sjf, round_robin, priority); priority is [Assumption — not in paper]
+methods: [fcfs, sjf, round_robin, priority]
+
+# Reference policies evaluated on the same paired workloads but NOT part of the Before / After comparison (list; only srtf). [Assumption — not in paper]
+reference_methods: [srtf]
+
+# Round Robin baseline (section).
+round_robin:
+  # Time quantum (ms). [Assumption — not in paper]
+  quantum_ms: 20.0
+
+# Priority baseline (section; added by this repository).
+priority:
+  # Use aging in the Priority baseline (bool); false = textbook static priorities. [Assumption — not in paper]
+  use_aging: false
+  # One priority level per this much continuous waiting, if use_aging (ms). [Assumption — not in paper]
+  aging_interval_ms: 200.0
+  # Maximum aging boost, if use_aging (levels). [Assumption — not in paper]
+  aging_max_boost: 3
+
+# Preemptive SRTF reference (section). It exists because the agent may preempt with short slices while textbook SJF may not; SRTF has the same information and the same freedom.
+srtf:
+  # Quantum (ms); set equal to the agent's shortest time slice (actions.time_slices_ms[0] = 10 ms in scheduler_ddqn.yaml) so both preempt at the same granularity. [Assumption — not in paper]
+  quantum_ms: 10.0
+
+# Nothing to shrink for the smoke run: baselines are cheap. (mapping; empty)
+smoke_overrides: {}
+```

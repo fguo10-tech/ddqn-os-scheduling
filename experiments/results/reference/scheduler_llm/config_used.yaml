@@ -1,0 +1,205 @@
+scheduler:
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  workload:
+    n_tasks_min: 40
+    n_tasks_max: 60
+    min_burst_ms: 0.5
+    slo_slack_ms: 20.0
+    priority_level_weights:
+      inference_request:
+      - 0.0
+      - 0.0
+      - 0.5
+      - 0.5
+      finetune_job:
+      - 0.5
+      - 0.5
+      - 0.0
+      - 0.0
+    load_profiles:
+      light: 0.5
+      medium: 0.75
+      heavy: 0.95
+    task_types:
+      inference_request:
+        weight: 0.85
+        cpu_median_ms: 12.0
+        cpu_sigma: 0.7
+        cpu_min_ms: 2.0
+        cpu_max_ms: 80.0
+        io_ops_min: 0
+        io_ops_max: 1
+        io_wait_min_ms: 5.0
+        io_wait_max_ms: 30.0
+        memory_min_mb: 64.0
+        memory_max_mb: 512.0
+        slo_factor: 2.0
+      finetune_job:
+        weight: 0.15
+        cpu_median_ms: 250.0
+        cpu_sigma: 0.5
+        cpu_min_ms: 80.0
+        cpu_max_ms: 800.0
+        io_ops_min: 1
+        io_ops_max: 4
+        io_wait_min_ms: 10.0
+        io_wait_max_ms: 60.0
+        memory_min_mb: 1536.0
+        memory_max_mb: 3072.0
+        slo_factor: 6.0
+  machine:
+    memory_capacity_mb: 4096.0
+    thrash_penalty: 1.0
+    context_switch_ms: 0.5
+    priority_adjust_overhead_ms: 0.1
+    num_priority_levels: 4
+  metrics:
+    starvation_threshold_ms: 1000.0
+  observation:
+    num_slots: 10
+    clip: 10.0
+    count_norm: 10.0
+    work_norm_ms: 100.0
+    wait_norm_ms: 500.0
+    slack_norm_ms: 500.0
+    slo_slack_threshold_ms: 50.0
+    arrival_rate_norm_per_s: 50.0
+    recent_time_constant_ms: 200.0
+    recent_completions: 10
+    reveal_total_remaining_cpu: false
+  actions:
+    time_slices_ms:
+    - 10.0
+    - 40.0
+    - null
+    max_priority_adjusts_per_dispatch: 2
+  reward:
+    time_scale_ms: 1000.0
+    w_wait: 0.5
+    w_turnaround: 1.0
+    w_response: 0.25
+    w_slo_violation: 0.5
+    w_completion: 0.1
+    w_utilisation: 0.05
+    invalid_action_penalty: 1.0
+    paper_sign_as_printed: false
+  guardrails:
+    enabled: true
+    aging:
+      enabled: true
+      interval_ms: 200.0
+      max_boost: 3
+    starvation:
+      enabled: true
+      max_wait_ms: 1000.0
+      forced_time_slice_ms: null
+    slo_fallback:
+      enabled: true
+      window_completions: 20
+      violation_threshold: 16
+      fallback_quantum_ms: 20.0
+      fallback_duration_ms: 200.0
+    q_divergence:
+      enabled: true
+      q_abs_limit: 1000.0
+      fallback_policy: round_robin
+      fallback_quantum_ms: 20.0
+  agent:
+    network:
+      type: slot_shared
+      hidden_sizes:
+      - 64
+      - 64
+    learning_rate: 0.0005
+    gamma: 0.98
+    batch_size: 64
+    replay_capacity: 50000
+    target_update_interval: 500
+    epsilon_start: 1.0
+    epsilon_end: 0.05
+    epsilon_decay_steps: 20000
+    learning_starts: 1000
+    train_every: 2
+    loss: huber
+    grad_clip_norm: 10.0
+    divergence_loss_limit: 10000.0
+    divergence_q_limit: 10000.0
+  training:
+    episodes: 300
+    load_profiles:
+    - light
+    - medium
+    - heavy
+    max_steps_per_episode: 3000
+    guardrails_in_training: true
+  evaluation:
+    episodes_per_load: 10
+    load_profiles:
+    - light
+    - medium
+    - heavy
+    epsilon: 0.0
+  ablations:
+    reward_paper_sign_as_printed:
+      reward.paper_sign_as_printed: true
+    reward_turnaround_only:
+      reward.w_wait: 0.0
+      reward.w_response: 0.0
+      reward.w_slo_violation: 0.0
+      reward.w_completion: 0.0
+      reward.w_utilisation: 0.0
+    reward_responsive:
+      reward.w_response: 1.0
+      reward.w_slo_violation: 2.0
+    gamma_low:
+      agent.gamma: 0.9
+    gamma_high:
+      agent.gamma: 0.995
+    lr_low:
+      agent.learning_rate: 0.0001
+    lr_high:
+      agent.learning_rate: 0.002
+    network_mlp:
+      agent.network.type: mlp
+      agent.network.hidden_sizes:
+      - 256
+      - 256
+    slo_fallback_aggressive:
+      guardrails.slo_fallback.window_completions: 10
+      guardrails.slo_fallback.violation_threshold: 6
+      guardrails.slo_fallback.fallback_duration_ms: 500.0
+    slo_fallback_off:
+      guardrails.slo_fallback.enabled: false
+    aging_off:
+      guardrails.aging.enabled: false
+    oracle_total_remaining:
+      observation.reveal_total_remaining_cpu: true
+    no_guardrails_in_training:
+      training.guardrails_in_training: false
+    starvation_bounded_slice:
+      guardrails.starvation.forced_time_slice_ms: 20.0
+baselines:
+  methods:
+  - fcfs
+  - sjf
+  - round_robin
+  - priority
+  reference_methods:
+  - srtf
+  round_robin:
+    quantum_ms: 20.0
+  priority:
+    use_aging: false
+    aging_interval_ms: 200.0
+    aging_max_boost: 3
+  srtf:
+    quantum_ms: 10.0
+run:
+  smoke: false
+  ablation: null
+  skip_ddqn: false

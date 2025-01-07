@@ -1,0 +1,13 @@
+load_profile,counter,mean_per_episode,std,n_seeds
+light,guardrail_starvation_triggers,0.26,0.5813776741499455,5
+medium,guardrail_starvation_triggers,0.74,1.158878768465451,5
+heavy,guardrail_starvation_triggers,5.32,1.5690761613127644,5
+light,guardrail_slo_fallback_activations,0.0,0.0,5
+medium,guardrail_slo_fallback_activations,0.02,0.044721359549995794,5
+heavy,guardrail_slo_fallback_activations,0.18,0.10954451150103321,5
+light,guardrail_q_divergence_latches,0.0,0.0,5
+medium,guardrail_q_divergence_latches,0.0,0.0,5
+heavy,guardrail_q_divergence_latches,0.0,0.0,5
+light,guardrail_overrides,0.24,0.5366563145999496,5
+medium,guardrail_overrides,0.74,1.158878768465451,5
+heavy,guardrail_overrides,6.1,1.7874562931719475,5

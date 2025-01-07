@@ -1,0 +1,390 @@
+`configs/scheduler_ddqn.yaml` (verbatim; comments carry the provenance tag of every key):
+
+```yaml
+# Double DQN scheduler: simulator, workload, MDP, guardrails, agent, training, evaluation.
+#
+# Every hyperparameter, the state encoding, the action count, the simulator and the workload
+# distribution are chosen by this repository. Unless a comment says otherwise every value
+# below is [Assumption — not in paper]. Values were chosen by hand and
+# checked on development seeds >= 100 only; the reporting seeds 0-4 were never used for tuning.
+# Units: time in milliseconds (ms), memory in megabytes (MB).
+
+# Reporting seeds for the reference benchmark (run once, later). Integers. [Assumption — not in paper]
+seeds: [0, 1, 2, 3, 4]
+
+# Synthetic workload generator (section).
+workload:
+  # Minimum number of tasks per episode (count, inclusive). [Assumption — not in paper]
+  n_tasks_min: 40
+  # Maximum number of tasks per episode (count, inclusive). [Assumption — not in paper]
+  n_tasks_max: 60
+  # Smallest CPU burst after splitting a task's demand into bursts (ms). [Assumption — not in paper]
+  min_burst_ms: 0.5
+  # Fixed slack added to every deadline: deadline = arrival + slo_factor*(CPU + I/O) + slack (ms). [Assumption — not in paper]
+  slo_slack_ms: 20.0
+  # Sampling weights of priority levels 0 (lowest) .. 3 (highest); length must equal machine.num_priority_levels (unitless). [Assumption — not in paper]
+  priority_level_weights: [0.25, 0.25, 0.25, 0.25]
+  # Target CPU utilisation rho per load profile; inter-arrival ~ Exponential(mean = mean CPU demand / rho) (fraction). [Assumption — not in paper]
+  load_profiles:
+    # Light load: target CPU utilisation (fraction). [Assumption — not in paper]
+    light: 0.5
+    # Medium load: target CPU utilisation (fraction). [Assumption — not in paper]
+    medium: 0.75
+    # Heavy load: target CPU utilisation (fraction). [Assumption — not in paper]
+    heavy: 0.95
+  # Per task type (every number is an assumption).
+  task_types:
+    # CPU-bound tasks (numbers below are assumptions).
+    cpu_bound:
+      # Mixture weight of this type (unitless, normalised over types). [Assumption — not in paper]
+      weight: 0.4
+      # Median of the lognormal total CPU demand (ms). [Assumption — not in paper]
+      cpu_median_ms: 40.0
+      # Sigma of the lognormal CPU demand (log-space, unitless). [Assumption — not in paper]
+      cpu_sigma: 1.0
+      # Lower clip of the CPU demand (ms). [Assumption — not in paper]
+      cpu_min_ms: 2.0
+      # Upper clip of the CPU demand (ms). [Assumption — not in paper]
+      cpu_max_ms: 400.0
+      # Minimum number of I/O operations (count; bursts = I/O ops + 1). [Assumption — not in paper]
+      io_ops_min: 0
+      # Maximum number of I/O operations (count). [Assumption — not in paper]
+      io_ops_max: 1
+      # Shortest I/O wait (ms). [Assumption — not in paper]
+      io_wait_min_ms: 5.0
+      # Longest I/O wait (ms). [Assumption — not in paper]
+      io_wait_max_ms: 20.0
+      # Smallest memory footprint (MB). [Assumption — not in paper]
+      memory_min_mb: 64.0
+      # Largest memory footprint (MB). [Assumption — not in paper]
+      memory_max_mb: 512.0
+      # Deadline budget as a multiple of the task's own CPU + I/O time (unitless). [Assumption — not in paper]
+      slo_factor: 3.0
+    # Memory-bound tasks (numbers below are assumptions).
+    memory_bound:
+      # Mixture weight of this type (unitless). [Assumption — not in paper]
+      weight: 0.3
+      # Median CPU demand (ms). [Assumption — not in paper]
+      cpu_median_ms: 30.0
+      # Lognormal sigma (unitless). [Assumption — not in paper]
+      cpu_sigma: 0.8
+      # Lower clip (ms). [Assumption — not in paper]
+      cpu_min_ms: 2.0
+      # Upper clip (ms). [Assumption — not in paper]
+      cpu_max_ms: 300.0
+      # Minimum I/O operations (count). [Assumption — not in paper]
+      io_ops_min: 0
+      # Maximum I/O operations (count). [Assumption — not in paper]
+      io_ops_max: 2
+      # Shortest I/O wait (ms). [Assumption — not in paper]
+      io_wait_min_ms: 5.0
+      # Longest I/O wait (ms). [Assumption — not in paper]
+      io_wait_max_ms: 30.0
+      # Smallest memory footprint (MB); 1-2 GB against a 4 GB machine. [Assumption — not in paper]
+      memory_min_mb: 1024.0
+      # Largest memory footprint (MB). [Assumption — not in paper]
+      memory_max_mb: 2048.0
+      # Deadline budget multiple (unitless). [Assumption — not in paper]
+      slo_factor: 3.0
+    # I/O-bound tasks (numbers below are assumptions).
+    io_bound:
+      # Mixture weight of this type (unitless). [Assumption — not in paper]
+      weight: 0.3
+      # Median CPU demand (ms). [Assumption — not in paper]
+      cpu_median_ms: 15.0
+      # Lognormal sigma (unitless). [Assumption — not in paper]
+      cpu_sigma: 0.6
+      # Lower clip (ms). [Assumption — not in paper]
+      cpu_min_ms: 2.0
+      # Upper clip (ms). [Assumption — not in paper]
+      cpu_max_ms: 100.0
+      # Minimum I/O operations (count): 2..7 I/O ops = 3..8 short bursts. [Assumption — not in paper]
+      io_ops_min: 2
+      # Maximum I/O operations (count). [Assumption — not in paper]
+      io_ops_max: 7
+      # Shortest I/O wait (ms). [Assumption — not in paper]
+      io_wait_min_ms: 5.0
+      # Longest I/O wait (ms). [Assumption — not in paper]
+      io_wait_max_ms: 40.0
+      # Smallest memory footprint (MB). [Assumption — not in paper]
+      memory_min_mb: 32.0
+      # Largest memory footprint (MB). [Assumption — not in paper]
+      memory_max_mb: 256.0
+      # Deadline budget multiple (unitless). [Assumption — not in paper]
+      slo_factor: 4.0
+
+# Single-CPU machine model (section).
+machine:
+  # Physical memory before thrashing starts (MB). [Assumption — not in paper]
+  memory_capacity_mb: 4096.0
+  # Thrashing slowdown = 1 + penalty * max(0, resident/capacity - 1) (unitless). [Assumption — not in paper]
+  thrash_penalty: 1.0
+  # Wall time of a context switch to a different task (ms). [Assumption — not in paper]
+  context_switch_ms: 0.5
+  # Wall time of one priority adjustment, no task progress (ms). [Assumption — not in paper]
+  priority_adjust_overhead_ms: 0.1
+  # Number of priority levels, 0 = lowest (count). [Assumption — not in paper]
+  num_priority_levels: 4
+
+# Episode-metric settings (section).
+metrics:
+  # A task counts as starved if its longest continuous wait exceeds this (ms). [Assumption — not in paper]
+  starvation_threshold_ms: 1000.0
+
+# Observation layout and normalisation (section).
+observation:
+  # K: number of visible READY-task slots (count). [Assumption — not in paper]
+  num_slots: 10
+  # Every feature is clipped to [-clip, clip] (unitless). [Assumption — not in paper]
+  clip: 10.0
+  # Divisor for task counts (tasks). [Assumption — not in paper]
+  count_norm: 10.0
+  # Divisor for CPU work and burst lengths (ms). [Assumption — not in paper]
+  work_norm_ms: 100.0
+  # Divisor for waiting times and time in system (ms). [Assumption — not in paper]
+  wait_norm_ms: 500.0
+  # Divisor for deadline slack (ms). [Assumption — not in paper]
+  slack_norm_ms: 500.0
+  # A READY task with slack below this counts toward "SLO pressure" (ms). [Assumption — not in paper]
+  slo_slack_threshold_ms: 50.0
+  # Divisor for the recent arrival rate (tasks per second). [Assumption — not in paper]
+  arrival_rate_norm_per_s: 50.0
+  # Time constant of the decaying recent utilisation / arrival-rate estimates (ms). [Assumption — not in paper]
+  recent_time_constant_ms: 200.0
+  # Number of most recent completions for the recent SLO-violation rate (count). [Assumption — not in paper]
+  recent_completions: 10
+  # ORACLE switch (bool): true reveals each task's total remaining CPU work over all future bursts (and the queue total; slack then subtracts it). The baselines do not have this information, so the default is false: the agent sees only current-burst remaining time, like SJF/SRTF. [Assumption — not in paper]
+  reveal_total_remaining_cpu: false
+
+# Action space (section).
+actions:
+  # J time slices for DISPATCH(slot, slice) (ms); null = run until the current CPU burst ends. [Assumption — not in paper]
+  time_slices_ms: [10.0, 40.0, null]
+  # Consecutive PRIORITY actions allowed before only DISPATCH is valid (count). [Assumption — not in paper]
+  max_priority_adjusts_per_dispatch: 2
+
+# Reward weights (section; see src/scheduler/reward.py for the formula).
+reward:
+  # tau: time terms are divided by this (ms). [Assumption — not in paper]
+  time_scale_ms: 1000.0
+  # Penalty weight on summed READY waiting time per step (per tau). [Assumption — not in paper]
+  w_wait: 0.5
+  # Penalty weight on summed time-in-system per step (per tau). [Assumption — not in paper]
+  w_turnaround: 1.0
+  # Penalty weight on waiting of never-dispatched tasks (per tau). [Assumption — not in paper]
+  w_response: 0.25
+  # Penalty per task whose deadline passes unfinished during the step (per task). [Assumption — not in paper]
+  w_slo_violation: 0.5
+  # Bonus per completed task (per task). [Assumption — not in paper]
+  w_completion: 0.1
+  # Bonus weight on busy fraction of the step (unitless). [Assumption — not in paper]
+  w_utilisation: 0.05
+  # Penalty when an external caller sends an invalid action (per action). [Assumption — not in paper]
+  invalid_action_penalty: 1.0
+  # true = alternative sign convention for the response-time term (U - T + R: response time is added instead of subtracted, the form printed in the source paper), kept as an ablation (bool). [Assumption — not in paper]
+  paper_sign_as_printed: false
+
+# Guardrails (section).
+guardrails:
+  # Master switch of the three OVERRIDE rules only (starvation override, SLO fallback, Q-divergence latch); does not affect aging or the observation encoding (bool). [Assumption — not in paper]
+  enabled: true
+  # Priority aging (sub-section).
+  aging:
+    # Raise effective priority with continuous waiting (bool). Part of the OBSERVATION ENCODING (window order, priority feature divisor), independent of guardrails.enabled; changing it changes what the network sees, so it needs retraining (ablation aging_off). [Assumption — not in paper]
+    enabled: true
+    # One priority level per this much continuous waiting (ms). [Assumption — not in paper]
+    interval_ms: 200.0
+    # Maximum aging boost (levels). [Assumption — not in paper]
+    max_boost: 3
+  # Max-wait starvation override (sub-section).
+  starvation:
+    # Max-wait override on/off (bool). [Assumption — not in paper]
+    enabled: true
+    # Force-dispatch any READY task that has waited this long continuously (ms). [Assumption — not in paper]
+    max_wait_ms: 1000.0
+    # Slice of the forced dispatch (ms); null = until the burst ends. [Assumption — not in paper]
+    forced_time_slice_ms: null
+  # SLO fallback to Round Robin (sub-section).
+  # Principle (set before looking at agent results): the fallback is a last-resort safety net, so
+  # it must not fire at SLO-violation rates the textbook baselines themselves show under heavy
+  # load (FCFS / RR reach about 50% late on development seeds). It therefore needs 80% late
+  # completions in a 20-completion window and hands control back after a short period.
+  slo_fallback:
+    # SLO fallback to Round Robin on/off (bool). [Assumption — not in paper]
+    enabled: true
+    # Number of most recent completions inspected (count). [Assumption — not in paper]
+    window_completions: 20
+    # Trigger when at least this many of them were late (count; 16 of 20 = 80%). [Assumption — not in paper]
+    violation_threshold: 16
+    # Round Robin quantum during the fallback (ms). [Assumption — not in paper]
+    fallback_quantum_ms: 20.0
+    # Length of the fallback period (ms of simulated time). [Assumption — not in paper]
+    fallback_duration_ms: 200.0
+  # Q-divergence / NaN latch (sub-section).
+  q_divergence:
+    # Q-divergence / NaN latch on/off (bool). [Assumption — not in paper]
+    enabled: true
+    # Latch when max |Q| exceeds this (reward units; returns here are O(10)). [Assumption — not in paper]
+    q_abs_limit: 1000.0
+    # Baseline used while latched (one of fcfs, sjf, round_robin, priority). [Assumption — not in paper]
+    fallback_policy: round_robin
+    # Quantum if the fallback is round_robin (ms). [Assumption — not in paper]
+    fallback_quantum_ms: 20.0
+
+# Double DQN hyperparameters (section).
+agent:
+  # Q-network architecture (sub-section).
+  network:
+    # Q-network type: slot_shared (one network scores every slot) or mlp (flat). [Assumption — not in paper]
+    type: slot_shared
+    # Hidden layer widths (units). [Assumption — not in paper]
+    hidden_sizes: [64, 64]
+  # Adam learning rate (per gradient step). [Assumption — not in paper]
+  learning_rate: 5.0e-4
+  # Discount per decision step (unitless). [Assumption — not in paper]
+  gamma: 0.98
+  # Minibatch size (transitions). [Assumption — not in paper]
+  batch_size: 64
+  # Replay buffer capacity (transitions). [Assumption — not in paper]
+  replay_capacity: 50000
+  # Hard target-network update period (gradient steps). [Assumption — not in paper]
+  target_update_interval: 500
+  # Initial exploration rate (probability). [Assumption — not in paper]
+  epsilon_start: 1.0
+  # Final exploration rate (probability). [Assumption — not in paper]
+  epsilon_end: 0.05
+  # Environment steps over which epsilon decays linearly (steps). [Assumption — not in paper]
+  epsilon_decay_steps: 20000
+  # Environment steps before the first gradient step (steps). [Assumption — not in paper]
+  learning_starts: 1000
+  # One gradient step every this many environment steps (steps). [Assumption — not in paper]
+  train_every: 2
+  # TD loss: huber or mse. [Assumption — not in paper]
+  loss: huber
+  # Gradient-norm clip (L2 norm). [Assumption — not in paper]
+  grad_clip_norm: 10.0
+  # Stop training if a minibatch loss exceeds this (loss units). [Assumption — not in paper]
+  divergence_loss_limit: 10000.0
+  # Stop training if mean |Q| of a minibatch exceeds this (reward units). [Assumption — not in paper]
+  divergence_q_limit: 10000.0
+
+# Training loop (section).
+training:
+  # Training episodes per seed (episodes); chosen for the compute budget. [Assumption — not in paper]
+  episodes: 300
+  # Load profile of each training episode is drawn uniformly from this list. [Assumption — not in paper]
+  load_profiles: [light, medium, heavy]
+  # Truncate an episode after this many decisions (steps); also applies at evaluation. [Assumption — not in paper]
+  max_steps_per_episode: 3000
+  # Keep the three override rules active while training (bool); overridden transitions are not stored. Aging and the encoding are unaffected. [Assumption — not in paper]
+  guardrails_in_training: true
+
+# Evaluation protocol (section).
+evaluation:
+  # Evaluation workloads per load profile and seed (episodes). [Assumption — not in paper]
+  episodes_per_load: 10
+  # Load profiles evaluated. [Assumption — not in paper]
+  load_profiles: [light, medium, heavy]
+  # Exploration rate during evaluation (probability; 0 = greedy). [Assumption — not in paper]
+  epsilon: 0.0
+
+# Named ablations: name -> {dotted.key: value}. Run with --ablation NAME into <out>/ablations/NAME/.
+ablations:
+  # Alternative sign convention for the response-time term (response time is added instead of subtracted, the form printed in the source paper), kept as an ablation.
+  reward_paper_sign_as_printed:
+    # Use U - T + R (bool). [Assumption — not in paper]
+    reward.paper_sign_as_printed: true
+  # Reward-weight variant 1: only the time-in-system penalty (pure mean-turnaround objective).
+  reward_turnaround_only:
+    # Waiting penalty off (per tau). [Assumption — not in paper]
+    reward.w_wait: 0.0
+    # Response penalty off (per tau). [Assumption — not in paper]
+    reward.w_response: 0.0
+    # SLO penalty off (per task). [Assumption — not in paper]
+    reward.w_slo_violation: 0.0
+    # Completion bonus off (per task). [Assumption — not in paper]
+    reward.w_completion: 0.0
+    # Utilisation bonus off (unitless). [Assumption — not in paper]
+    reward.w_utilisation: 0.0
+  # Reward-weight variant 2: stronger response-time and deadline penalties.
+  reward_responsive:
+    # Response penalty (per tau). [Assumption — not in paper]
+    reward.w_response: 1.0
+    # SLO penalty (per task). [Assumption — not in paper]
+    reward.w_slo_violation: 2.0
+  # Lower discount.
+  gamma_low:
+    # Discount per step (unitless). [Assumption — not in paper]
+    agent.gamma: 0.9
+  # Higher discount.
+  gamma_high:
+    # Discount per step (unitless). [Assumption — not in paper]
+    agent.gamma: 0.995
+  # Lower learning rate.
+  lr_low:
+    # Adam learning rate. [Assumption — not in paper]
+    agent.learning_rate: 1.0e-4
+  # Higher learning rate.
+  lr_high:
+    # Adam learning rate. [Assumption — not in paper]
+    agent.learning_rate: 2.0e-3
+  # The other network type: a flat MLP over the whole observation.
+  network_mlp:
+    # Network type (mlp or slot_shared). [Assumption — not in paper]
+    agent.network.type: mlp
+    # Hidden widths for the flat MLP (units). [Assumption — not in paper]
+    agent.network.hidden_sizes: [256, 256]
+  # Previous, aggressive SLO fallback (6 late of 10 completions, 500 ms of Round Robin).
+  slo_fallback_aggressive:
+    # Completions inspected (count). [Assumption — not in paper]
+    guardrails.slo_fallback.window_completions: 10
+    # Late completions that trigger the fallback (count). [Assumption — not in paper]
+    guardrails.slo_fallback.violation_threshold: 6
+    # Fallback period (ms). [Assumption — not in paper]
+    guardrails.slo_fallback.fallback_duration_ms: 500.0
+  # SLO fallback rule switched off (other guardrails unchanged), in training and evaluation.
+  slo_fallback_off:
+    # SLO fallback on/off (bool). [Assumption — not in paper]
+    guardrails.slo_fallback.enabled: false
+  # Retrain without priority aging (changes the observation encoding: window order and priority divisor).
+  aging_off:
+    # Aging on/off (bool). [Assumption — not in paper]
+    guardrails.aging.enabled: false
+  # Give the agent the oracle total-remaining-CPU features the baselines do not have.
+  oracle_total_remaining:
+    # Reveal future-burst work (bool). [Assumption — not in paper]
+    observation.reveal_total_remaining_cpu: true
+  # Train without the three override rules (aging and encoding unchanged); evaluation still reports ddqn with and without overrides.
+  no_guardrails_in_training:
+    # Guardrails during training (bool). [Assumption — not in paper]
+    training.guardrails_in_training: false
+
+# Merged over the config with --smoke: tiny CI-scale run (well under 30 s). Development seeds only.
+smoke_overrides:
+  # Development seeds for the smoke run (never the reporting seeds). [Assumption — not in paper]
+  seeds: [100, 101]
+  # Smaller episodes for the smoke run (sub-section).
+  workload:
+    # Fewer tasks per episode (count). [Assumption — not in paper]
+    n_tasks_min: 12
+    # Fewer tasks per episode (count). [Assumption — not in paper]
+    n_tasks_max: 16
+  # Agent settings for the smoke run (sub-section).
+  agent:
+    # Smaller buffer (transitions). [Assumption — not in paper]
+    replay_capacity: 5000
+    # Start learning early (steps). [Assumption — not in paper]
+    learning_starts: 64
+    # Short exploration schedule (steps). [Assumption — not in paper]
+    epsilon_decay_steps: 300
+    # Frequent target sync (gradient steps). [Assumption — not in paper]
+    target_update_interval: 50
+  # Training settings for the smoke run (sub-section).
+  training:
+    # A handful of episodes (episodes). [Assumption — not in paper]
+    episodes: 6
+  # Evaluation settings for the smoke run (sub-section).
+  evaluation:
+    # One workload per load profile (episodes). [Assumption — not in paper]
+    episodes_per_load: 1
+```
