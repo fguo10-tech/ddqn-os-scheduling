@@ -1,0 +1,62 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it using the metadata in this file, and cite the source
+  paper listed under "references". This is a draft reference implementation: see
+  experiments/results/RESULTS.md for the values it produces and the conditions under which it
+  produces them.
+title: "ddqn-os-scheduling: a reference implementation of Double DQN operating-system scheduling with guardrails"
+type: software
+authors:
+  - family-names: Guo
+    given-names: Fan
+repository-code: "https://github.com/fguo10-tech/ddqn-os-scheduling"
+version: 0.1.0.dev0
+license: Apache-2.0
+abstract: >-
+  Draft, reproducible reference implementation of Double DQN operating-system scheduling with
+  guardrails, for researchers who want to run, benchmark and extend it. It provides a
+  discrete-event single-CPU operating-system scheduling simulator with synthetic workloads at
+  three load levels, FCFS, SJF, Round Robin and Priority baselines, a preemptive
+  shortest-remaining-time-first reference, a Double DQN agent whose reward penalises waiting,
+  turnaround, slow response and deadline misses, three guardrails (starvation override, SLO
+  fallback to Round Robin and a Q-divergence latch), and a SchedulerPlugin interface with
+  job-queue adapter sketches. Task classes are defined in configuration, and a second, synthetic
+  workload profile shaped like the work of an LLM platform (inference requests and fine-tuning
+  jobs) is reported with per-class metrics; no language model is run. Results are reported as a
+  Before / After comparison under documented conditions. Every number in the documentation is
+  labelled Paper-reported, Reproduced or Target / TBD.
+keywords:
+  - reinforcement learning
+  - Double DQN
+  - operating system scheduling
+  - discrete-event simulation
+  - guardrails
+  - workload profiles
+  - reproducibility
+references:
+  - type: conference-paper
+    title: "Dynamic Operating System Scheduling Using Double DQN: A Reinforcement Learning Approach to Task Optimization"
+    authors:
+      - family-names: Sun
+        given-names: Xiaoxuan
+      - family-names: Duan
+        given-names: Yifei
+      - family-names: Deng
+        given-names: Yingnan
+      - family-names: Guo
+        given-names: Fan
+      - family-names: Cai
+        given-names: Guohui
+      - family-names: Peng
+        given-names: Yuting
+    year: 2025
+    collection-title: "2025 8th International Conference on Advanced Algorithms and Control Engineering (ICAACE)"
+    collection-type: proceedings
+    start: 1492
+    end: 1497
+    doi: "10.1109/ICAACE65325.2025.11020551"
+    url: "https://ieeexplore.ieee.org/document/11020551/"
+    identifiers:
+      - type: other
+        value: "arXiv:2503.23659"
+        description: arXiv preprint
